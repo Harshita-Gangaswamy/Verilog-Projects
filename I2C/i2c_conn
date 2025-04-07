@@ -1,0 +1,38 @@
+module i2c_top (
+    input wire clk,
+    input wire rst,
+    input wire start,
+    input wire rw,
+    input wire [7:0] master_data_in,
+    input wire [7:0] slave_data_in,
+    input wire [6:0] addr,
+    inout wire sda,
+    output wire scl,
+    output wire [7:0] master_data_out,
+    output wire done
+);
+
+    i2c_master master (
+        .clk(clk),
+        .rst(rst),
+        .start(start),
+        .rw(rw),
+        .data_in(master_data_in),
+        .addr(addr),
+        .sda(sda),
+        .scl(scl),
+        .done(done),
+        .data_out(master_data_out)
+    );
+
+    i2c_slave slave (
+        .clk(clk),
+        .rst(rst),
+        .sda(sda),
+        .scl(scl),
+        .data_out(master_data_out),
+        .data_in(slave_data_in),
+        .data_valid()
+    );
+
+endmodule

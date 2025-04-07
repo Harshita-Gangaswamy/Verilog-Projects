@@ -1,0 +1,53 @@
+module i2c_slave (
+    input wire clk,         // System clock
+    input wire rst,         // Reset
+    inout wire sda,         // Serial Data (Bidirectional)
+    input wire scl,         // Serial Clock
+    output reg [7:0] data_out,  // Data received from Master
+    input wire [7:0] data_in,   // Data to send to Master
+    output reg data_valid       // High when a byte is received
+);
+
+    parameter SLAVE_ADDR = 7'h50; // Slave address (0x50)
+    
+    reg [7:0] shift_reg;
+    reg [3:0] bit_count;
+    reg ack;
+    reg receiving = 0;
+    reg sending = 0;
+    reg sda_out = 1;
+    
+    assign sda = (sending && !sda_out) ? 1'b0 : 1'bz; // Tri-state control
+
+    always @(negedge scl or posedge rst) begin
+        if (rst) begin
+            bit_count <= 0;
+            receiving <= 0;
+            sending <= 0;
+            data_valid <= 0;
+        end else if (!receiving && !sending && sda == 0) begin
+            receiving <= 1; // Start condition detected
+            bit_count <= 0;
+        end else if (receiving) begin
+            shift_reg <= {shift_reg[6:0], sda};
+            bit_count <= bit_count + 1;
+            
+            if (bit_count == 7) begin
+                if (shift_reg[6:0] == SLAVE_ADDR) begin
+                    ack <= 1;
+                end else begin
+                    receiving <= 0;
+                end
+            end else if (bit_count == 8) begin
+                receiving <= 0;
+                ack <= 0;
+                if (shift_reg[0] == 1) sending <= 1; // Read request
+            end
+        end else if (sending) begin
+            sda_out <= data_in[7];
+            data_in <= {data_in[6:0], 1'b0};
+            bit_count <= bit_count + 1;
+            if (bit_count == 8) sending <= 0;
+        end
+    end
+endmodule
